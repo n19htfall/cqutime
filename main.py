@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pathlib import Path
 from config import Settings
+from UrlConfig import FRONTED_URL
 from cqutimetable.timetable import Timetable
 
 
@@ -20,19 +21,11 @@ settings = Settings()
 
 fast_app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[FRONTED_URL],
     allow_credentials=True,
     allow_methods=["POST"],
     allow_headers=["*"],  # 允许所有请求头
 )
-
-# fast_app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["https://cqutime.top"],
-#     allow_credentials=True,
-#     allow_methods=["POST"],
-#     allow_headers=["*"],  # 允许所有请求头
-# )
 
 # 配置日志
 logging.basicConfig(
