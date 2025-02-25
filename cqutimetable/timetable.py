@@ -2,11 +2,12 @@ import pandas as pd
 import warnings
 import shutil
 import os
+import zoneinfo
 
 from config import TimetableSettings
 from cqutimetable.course import Course
 from datetime import datetime, timedelta
-from icalendar import Calendar
+from icalendar import Calendar, Event
 from urllib.parse import quote
 from typing import List
 from zipfile import BadZipFile
@@ -26,7 +27,7 @@ def validate_format(df: pd.DataFrame) -> None:
         or "课表" not in df.columns.tolist()
         or df.iloc[0].tolist() != EXPECTED_COLUMNS
     ):
-        raise ValueError("课表格式错误！")
+        raise ValueError("课表格式错误")
 
 
 def process_course_row(row, config) -> Course:
@@ -47,7 +48,6 @@ def process_course_row(row, config) -> Course:
 
 class Timetable:
     def __init__(self, path: str, name: str, semester_start_str: str):
-        self.courses: list[Course] = []
         self.cal = Calendar()
         self.timetable_name = name
         self.config = TimetableSettings()
@@ -56,6 +56,8 @@ class Timetable:
             and datetime.strptime(semester_start_str, "%Y-%m-%d").weekday() == 0
         ):
             self.config.SEMESTER_START = semester_start_str
+        else:
+            raise ValueError("日期错误")
         self.semester_start = datetime.strptime(self.config.SEMESTER_START, "%Y-%m-%d")
         self.semester_end = self.semester_start + timedelta(weeks=20, days=-1)
         with warnings.catch_warnings(record=True):
@@ -63,9 +65,9 @@ class Timetable:
             try:
                 df = pd.read_excel(path, engine="openpyxl", dtype=str)
             except BadZipFile:
-                raise ValueError("不是Zip文件，格式错误！")
+                raise ValueError("Excel文件损坏")
         validate_format(df)
-        courses: List[Course] = (
+        self.courses: List[Course] = (
             df.apply(
                 lambda row: process_course_row(row, self.config),
                 axis=1,
@@ -73,9 +75,34 @@ class Timetable:
             .dropna()
             .tolist()
         )
-        for course in courses:
-            course.create_event_in_ical(self.cal, self.semester_start)
-        self.courses = courses
+        for course in self.courses:
+            # 整周不创建课程
+            if not course.is_all_week:
+                self.create_event_in_ical(course)
+
+    def create_event_in_ical(self, course: Course) -> None:
+        if course.weekday not in range(0, 7):
+            return
+        tz = zoneinfo.ZoneInfo("Asia/Shanghai")
+        for week_num in course.week_range:
+            event = Event()
+            start_time = (
+                self.semester_start
+                + timedelta(weeks=week_num - 1, days=course.weekday)
+                + timedelta(hours=course.start.hour, minutes=course.start.minute)
+            )
+            end_time = (
+                self.semester_start
+                + timedelta(weeks=week_num - 1, days=course.weekday)
+                + timedelta(hours=course.end.hour, minutes=course.end.minute)
+            )
+            start_time = start_time.replace(tzinfo=tz)
+            end_time = end_time.replace(tzinfo=tz)
+            event.add("summary", course.name)
+            event.add("dtstart", start_time)
+            event.add("dtend", end_time)
+            event.add("location", course.place)
+            self.cal.add_component(event)
 
     def export_ics(self):
         with open(self.timetable_name + ".ics", "wb") as f:

@@ -1,7 +1,5 @@
 from config import TimetableSettings
 from datetime import datetime, timedelta
-from icalendar import Calendar, Event
-import zoneinfo
 
 
 class Course:
@@ -76,30 +74,3 @@ class Course:
             self.end = datetime.strptime(
                 self.config.START_TIME[str(end_class)], "%H:%M"
             ) + timedelta(minutes=self.config.DURATION)
-
-    def create_event_in_ical(self, ical: Calendar, semester_start: datetime) -> None:
-        if self.is_all_week:
-            return  # 不创建整周课程
-
-        if self.weekday == -1 or self.weekday is None:
-            return
-
-        for week_num in self.week_range:
-            event = Event()
-            start_time = (
-                semester_start
-                + timedelta(weeks=week_num - 1, days=self.weekday)
-                + timedelta(hours=self.start.hour, minutes=self.start.minute)
-            )
-            end_time = (
-                semester_start
-                + timedelta(weeks=week_num - 1, days=self.weekday)
-                + timedelta(hours=self.end.hour, minutes=self.end.minute)
-            )
-            start_time = start_time.replace(tzinfo=zoneinfo.ZoneInfo("Asia/Shanghai"))
-            end_time = end_time.replace(tzinfo=zoneinfo.ZoneInfo("Asia/Shanghai"))
-            event.add("summary", self.name)
-            event.add("dtstart", start_time)
-            event.add("dtend", end_time)
-            event.add("location", self.place)
-            ical.add_component(event)

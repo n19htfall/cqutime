@@ -13,7 +13,7 @@ class Settings:
         
 # 课表设置
 class TimetableSettings:
-    SEMESTER_START: str = "2025-02-17"
+    SEMESTER_START: str
     DURATION: int = 45
     START_TIME: dict = {
         "1": "08:30",
