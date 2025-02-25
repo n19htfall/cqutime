@@ -30,19 +30,19 @@ def validate_format(df: pd.DataFrame) -> None:
         raise ValueError("课表格式错误")
 
 
-def process_course_row(row, config) -> Course:
+def process_course_row(row, timetable_config) -> Course:
     row_lst = row.tolist()
     if len(row_lst) != 5:
         return None
     if row_lst[0] == "课程名称":
         return None
     return Course(
-        _config=config,
-        _name=row_lst[0],
-        _number=row_lst[1],
-        _time=row_lst[2],
-        _place=row_lst[3],
-        _teacher=row_lst[4],
+        config=timetable_config,
+        name=row_lst[0],
+        number=row_lst[1],
+        time=row_lst[2],
+        place=row_lst[3],
+        teacher=row_lst[4],
     )
 
 
@@ -104,7 +104,7 @@ class Timetable:
             event.add("location", course.place)
             self.cal.add_component(event)
 
-    def export_ics(self):
+    def export_ics(self) -> None:
         with open(self.timetable_name + ".ics", "wb") as f:
             f.write(self.cal.to_ical())
         shutil.copy(self.timetable_name + ".ics", self.timetable_name + "_p.txt")

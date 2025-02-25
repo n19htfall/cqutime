@@ -5,7 +5,7 @@ class Settings:
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE: int = 1024 * 1024 * 2  # 2MB
     ALLOWED_EXTENSIONS: List[str] = [".xls", ".xlsx"]
-    ALLOWED_MIME_TYPES = [
+    ALLOWED_MIME_TYPES: List[str] = [
         "application/vnd.ms-excel",  # .xls
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # .xlsx
     ]

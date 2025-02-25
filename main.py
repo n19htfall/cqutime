@@ -79,7 +79,7 @@ async def save_file(file: UploadFile, file_id: str) -> Path:
     return file_path
 
 
-@fast_app.post("/upload", response_model=FileResponse)
+@fast_app.post("/api/upload", response_model=FileResponse)
 async def fastapi_upload(file: UploadFile = File(...), semester: str = Form(...)):
     file_size = 0
     content = await file.read()

@@ -1,30 +1,45 @@
+import re
+
 from config import TimetableSettings
 from datetime import datetime, timedelta
+from typing import List, Optional
+
+WEEKDAY_MAP = {
+    "一": 0,
+    "二": 1,
+    "三": 2,
+    "四": 3,
+    "五": 4,
+    "六": 5,
+    "日": 6,
+}
 
 
 class Course:
     def __init__(
         self,
-        _config: TimetableSettings,
-        _name: str,
-        _number: str,
-        _time: str,
-        _place: str = "",
-        _teacher: str = "",
+        config: TimetableSettings,
+        name: str,
+        number: str,
+        time: str,
+        place: str = "",
+        teacher: str = "",
     ) -> None:
-        self.config = _config
-        self.name = _name
-        self.number = _number
-        self.place = _place
-        self.teacher = _teacher
-        self.week_range: list[int] = []
-        self.weekday: int = -1
-        self.class_range: list[int] = []
+        self.config = config
+        self.name = name
+        self.number = number
+        self.place = place
+        self.teacher = teacher
         self.is_all_week = False
-        self.build_time(_time)
+        self.week_range: List[int] = []
+        self.weekday: Optional[int] = None
+        self.class_range: Optional[List[int]] = None
+        self.start: Optional[datetime] = None
+        self.end: Optional[datetime] = None
+        self.build_time(time)
 
     @staticmethod
-    def parse_range_string(s: str) -> list[int]:
+    def parse_range_string(s: str) -> List[int]:
         """
         获取一个字符串中的数字，使之成为一个列表，同时解析“-”两边范围。
 
@@ -44,33 +59,44 @@ class Course:
     def build_time(self, description: str) -> None:
         """
         通过课程时间的描述获取上课的周数、星期几和第几节课。
+        description like '1-5,8,9周星期一3-5节' or '14-17周'
         """
-        zhou_index = description.find("周")
-        qi_index = description.find("期")
-        if zhou_index == -1:
-            return
-        week_range_str = description[:zhou_index]
-        self.week_range = self.parse_range_string(week_range_str)
-        if qi_index == -1:
+        full_pattern = r"([\d,-]+)周(?:星期([一二三四五六日]))?(\d+(?:-\d+)?)节?"
+        week_only_pattern = r"([\d,-]+)周$"
+        full_match = re.match(full_pattern, description)
+        week_only_match = re.match(week_only_pattern, description)
+
+        if full_match:
+            week_range_str, weekday_str, class_range_str = full_match.groups()
+        elif week_only_match:
+            week_range_str = week_only_match.group(1)
+            weekday_str = None
+            class_range_str = None
             self.is_all_week = True
         else:
-            self.weekday = {
-                "一": 0,
-                "二": 1,
-                "三": 2,
-                "四": 3,
-                "五": 4,
-                "六": 5,
-                "日": 6,
-            }.get(description[qi_index + 1], None)
-            class_range_str = description[qi_index + 2 : -1]
-            self.class_range = self.parse_range_string(class_range_str)
+            raise ValueError(f"Invalid description format: {description}")
+
+        # 解析周范围
+        self.week_range = self.parse_range_string(week_range_str)
+
+        # 如果不是全周课程，解析星期几和节次
         if not self.is_all_week:
-            start_class = self.class_range[0]
-            end_class = self.class_range[-1]
-            self.start = datetime.strptime(
-                self.config.START_TIME[str(start_class)], "%H:%M"
-            )
-            self.end = datetime.strptime(
-                self.config.START_TIME[str(end_class)], "%H:%M"
-            ) + timedelta(minutes=self.config.DURATION)
+            if weekday_str:
+                self.weekday = WEEKDAY_MAP.get(weekday_str)
+                if self.weekday is None:
+                    raise ValueError(f"Invalid weekday: {weekday_str}")
+            else:
+                raise ValueError("Weekday is required for non-all-week courses")
+
+            if class_range_str:
+                self.class_range = self.parse_range_string(class_range_str)
+                start_class = self.class_range[0]
+                end_class = self.class_range[-1]
+                self.start = datetime.strptime(
+                    self.config.START_TIME[str(start_class)], "%H:%M"
+                )
+                self.end = datetime.strptime(
+                    self.config.START_TIME[str(end_class)], "%H:%M"
+                ) + timedelta(minutes=self.config.DURATION)
+            else:
+                raise ValueError("Class range is required for non-all-week courses")
