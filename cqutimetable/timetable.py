@@ -47,9 +47,9 @@ def process_course_row(row, timetable_config) -> Course:
 
 
 class Timetable:
-    def __init__(self, path: str, name: str, semester_start_str: str):
+    def __init__(self, path: str, file_id: str, semester_start_str: str):
         self.cal = Calendar()
-        self.timetable_name = name
+        self.timetable_name = file_id
         self.config = TimetableSettings()
         if (
             semester_start_str is not None
@@ -83,7 +83,7 @@ class Timetable:
     def create_event_in_ical(self, course: Course) -> None:
         if course.weekday not in range(0, 7):
             return
-        tz = zoneinfo.ZoneInfo("Asia/Shanghai")
+        tz = zoneinfo.ZoneInfo(self.config.TIMEZONE)
         for week_num in course.week_range:
             event = Event()
             start_time = (

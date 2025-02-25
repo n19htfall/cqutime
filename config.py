@@ -13,6 +13,7 @@ class Settings:
         
 # 课表设置
 class TimetableSettings:
+    TIMEZONE: str = "Asia/Shanghai"
     SEMESTER_START: str
     DURATION: int = 45
     START_TIME: dict = {
